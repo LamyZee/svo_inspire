@@ -3,7 +3,7 @@
 
 SET(TRACE TRUE)
 SET(HAVE_G2O FALSE) 
-SET(USE_ROS FALSE) # Set FALSE if you want to build this package without Catkin
+SET(USE_ROS TRUE) # Set FALSE if you want to build this package without Catkin
 SET(DEBUG_OUTPUT FALSE) # Only relevant if build without ROS
 
 ################################################################################
@@ -53,10 +53,10 @@ FIND_PACKAGE(Boost REQUIRED COMPONENTS thread system)
 
 IF(USE_ROS)
 # FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules vikit_common vikit_ros) 
- FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules)
+ FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules tf)
   catkin_package(
       DEPENDS Eigen OpenCV Sophus Boost
-      CATKIN_DEPENDS roscpp roslib
+      CATKIN_DEPENDS roscpp roslib tf
 #      CATKIN_DEPENDS roscpp roslib vikit_common vikit_ros fast
       INCLUDE_DIRS include
       LIBRARIES svo
@@ -90,6 +90,8 @@ LIST(APPEND LINK_LIBS
 IF(USE_ROS)
   INCLUDE_DIRECTORIES(${catkin_INCLUDE_DIRS})
   LIST(APPEND LINK_LIBS ${catkin_LIBRARIES})
+LIST(APPEND SOURCEFILES
+  3rd/vikit/src/output_helper.cpp)
 ELSE()
   INCLUDE_DIRECTORIES(${vikit_common_INCLUDE_DIRS})
   LIST(APPEND LINK_LIBS ${vikit_common_LIBRARIES})
