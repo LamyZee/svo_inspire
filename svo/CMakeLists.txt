@@ -52,7 +52,7 @@ FIND_PACKAGE(Sophus REQUIRED)
 FIND_PACKAGE(Boost REQUIRED COMPONENTS thread system)
 
 IF(USE_ROS)
-# FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules vikit_common vikit_ros) 
+# FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules) 
  FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules tf)
   catkin_package(
       DEPENDS Eigen OpenCV Sophus Boost
@@ -79,6 +79,8 @@ INCLUDE_DIRECTORIES(
   ${PROJECT_SOURCE_DIR}/3rd/vikit/include/
 )
 
+SET(Sophus_LIBRARIES libSophus.so)
+
 # Set link libraries
 LIST(APPEND LINK_LIBS 
   ${OpenCV_LIBS}
@@ -90,11 +92,13 @@ LIST(APPEND LINK_LIBS
 IF(USE_ROS)
   INCLUDE_DIRECTORIES(${catkin_INCLUDE_DIRS})
   LIST(APPEND LINK_LIBS ${catkin_LIBRARIES})
-LIST(APPEND SOURCEFILES
-  3rd/vikit/src/output_helper.cpp)
+  LIST(APPEND SOURCEFILES
+  3rd/vikit/src/output_helper.cpp
+ # 3rd/vikit/output_helper.cpp
+  )
 ELSE()
-  INCLUDE_DIRECTORIES(${vikit_common_INCLUDE_DIRS})
-  LIST(APPEND LINK_LIBS ${vikit_common_LIBRARIES})
+#  INCLUDE_DIRECTORIES(${vikit_common_INCLUDE_DIRS})
+#  LIST(APPEND LINK_LIBS ${vikit_common_LIBRARIES})
 ENDIF()
 
 # Set sourcefiles
