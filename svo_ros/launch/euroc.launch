@@ -1,0 +1,8 @@
+<launch>
+	<node pkg="svo_ros" type="runsvo" name="svo" clear_params="true" output="screen">
+	<param name="init_rx" value="0.00" />
+        <param name="init_ry" value="0.00" />
+        <param name="init_rz" value="0.00" />
+
+	</node>
+</launch>

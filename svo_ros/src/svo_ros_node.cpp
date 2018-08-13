@@ -38,9 +38,9 @@
 #include <Eigen/Core>
 
 #define ROW 480
-#define COL 640
+#define COL 752
 using namespace std;
-std::string IMAGE_TOPIC;
+std::string IMAGE_TOPIC = "/cam0/image_raw";
 
 std::mutex i_buf;
 vector<uchar> r_status;
@@ -59,18 +59,25 @@ bool init_pub = 0;
 
 class BenchmarkNode
 {
-  vk::AbstractCamera* cam_;
-
 public:
-  BenchmarkNode();
-  ~BenchmarkNode();
-  void addImage(const cv::Mat& image, double timestamp);
-  svo::FrameHandlerMono* vo_;
+    BenchmarkNode();
+    ~BenchmarkNode();
+    void addImage(const cv::Mat& image, double timestamp);
+    vk::AbstractCamera* cam_;
+    svo::FrameHandlerMono* vo_;
+    svo::Visualizer visualizer_;
 };
 
 BenchmarkNode::BenchmarkNode()
 {
-    cam_ = new vk::PinholeCamera(752, 480, 315.5, 315.5, 376.0, 240.0);
+    visualizer_.T_world_from_vision_ = Sophus::SE3(
+    vk::rpy2dcm(Eigen::Vector3d(vk::getParam<double>("svo/init_rx", 0.0),
+                                vk::getParam<double>("svo/init_ry", 0.0),
+                                vk::getParam<double>("svo/init_rz", 0.0))),
+    Eigen::Vector3d(vk::getParam<double>("svo/init_tx", 0.0),
+                    vk::getParam<double>("svo/init_ty", 0.0),
+                    vk::getParam<double>("svo/init_tz", 0.0)));
+    cam_ = new vk::PinholeCamera(752, 480, 461.6, 460.3, 363.0, 248.1);
     vo_ = new svo::FrameHandlerMono(cam_);
     vo_->start();
 }
@@ -80,6 +87,9 @@ BenchmarkNode::~BenchmarkNode()
     delete vo_;
     delete cam_;
 }
+
+bool publish_markers_ = true;
+bool publish_dense_input_ = true;
 
 void BenchmarkNode::addImage(const cv::Mat& image, double timestamp)
 {
@@ -93,12 +103,17 @@ void BenchmarkNode::addImage(const cv::Mat& image, double timestamp)
                       << "Proc. Time: " << vo_->lastProcessingTime()*1000 << "ms \n";*/
             // access the pose of the camera via vo_->lastFrame()->T_f_w_.
         }
-    }
+        visualizer_.publishMinimal(image, vo_->lastFrame(), *vo_, timestamp);
 
+#if 0        
+        if(publish_markers_ && vo_->stage() != svo::FrameHandlerBase::STAGE_PAUSED)
+            visualizer_.visualizeMarkers(vo_->lastFrame(), vo_->coreKeyframes(), vo_->map());
+
+        if(publish_dense_input_)
+            visualizer_.exportToDense(vo_->lastFrame());
+#endif    
+        }
 }
-
-
-BenchmarkNode* svo_ = new BenchmarkNode();
 
 void process(const sensor_msgs::ImageConstPtr &img_msg)
 {
@@ -127,6 +142,8 @@ void process(const sensor_msgs::ImageConstPtr &img_msg)
 
     const cv::Mat image_ = ptr->image.rowRange(0, ROW);
 
+    
+    static BenchmarkNode* svo_ = new BenchmarkNode();
     svo_->addImage(image_, last_image_time);
 
 /*    ROS_INFO("Frame-Id: %d ", svo_->vo_->lastFrame()->id_ );
@@ -146,8 +163,10 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg){
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "feature_tracker");
-    ros::NodeHandle n("~");
+    ros::init(argc, argv, "svo");
+    ros::NodeHandle n;
+
+
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
     //readParameters(n);
 

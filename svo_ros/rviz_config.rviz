@@ -32,6 +32,13 @@ Panels:
     Name: Time
     SyncMode: 0
     SyncSource: Image
+  - Class: rviz/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+      Splitter Ratio: 0.5
+    Tree Height: 359
 Visualization Manager:
   Class: ""
   Displays:
@@ -53,20 +60,6 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Class: rviz/TF
-      Enabled: false
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: true
-      Tree:
-        {}
-      Update Interval: 0
-      Value: false
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /svo/keyframes
