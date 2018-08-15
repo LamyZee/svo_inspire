@@ -183,7 +183,8 @@ bool Matcher::findEpipolarMatchDirect(
     const double d_estimate,
     const double d_min,
     const double d_max,
-    double& depth)
+    double& depth,
+    double& tau_match)
 {
   SE3 T_cur_ref = cur_frame.T_f_w_ * ref_frame.T_f_w_.inverse();
   int zmssd_best = PatchScore::threshold();
@@ -231,11 +232,11 @@ bool Matcher::findEpipolarMatchDirect(
     if(options_.align_1d)
       res = feature_alignment::align1D(
           cur_frame.img_pyr_[search_level_], (px_A-px_B).cast<float>().normalized(),
-          patch_with_border_, patch_, options_.align_max_iter, px_scaled, h_inv_);
+          patch_with_border_, patch_, options_.align_max_iter, px_scaled, h_inv_, tau_match);
     else
       res = feature_alignment::align2D(
           cur_frame.img_pyr_[search_level_], patch_with_border_, patch_,
-          options_.align_max_iter, px_scaled);
+          options_.align_max_iter, px_scaled, tau_match);
     if(res)
     {
       px_cur_ = px_scaled*(1<<search_level_);

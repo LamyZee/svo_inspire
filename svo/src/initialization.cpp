@@ -22,6 +22,7 @@
 #include <svo/feature_detection.h>
 #include <vikit/math_utils.h>
 #include <vikit/homography.h>
+#define USE_HOMOGRAPHY
 
 namespace svo {
 namespace initialization {
@@ -53,10 +54,18 @@ InitResult KltHomographyInit::addSecondFrame(FramePtr frame_cur)
   if(disparity < Config::initMinDisparity())
     return NO_KEYFRAME;
 
+#ifdef USE_HOMOGRAPHY
   computeHomography(
       f_ref_, f_cur_,
       frame_ref_->cam_->errorMultiplier2(), Config::poseOptimThresh(),
       inliers_, xyz_in_cur_, T_cur_from_ref_);
+#else
+  computeEssential(
+      f_ref_, f_cur_,
+      frame_ref_->cam_->errorMultiplier2(), Config::poseOptimThresh(),
+      inliers_, xyz_in_cur_, T_cur_from_ref_);
+#endif
+
   SVO_INFO_STREAM("Init: Homography RANSAC "<<inliers_.size()<<" inliers.");
 
   if(inliers_.size() < Config::initMinInliers())
@@ -194,6 +203,40 @@ void computeHomography(
   T_cur_from_ref = Homography.T_c2_from_c1;
 }
 
+void computeEssential(
+    const vector<Vector3d>& f_ref,
+    const vector<Vector3d>& f_cur,
+    double focal_length,
+    double reprojection_threshold,
+    vector<int>& inliers,
+    vector<Vector3d>& xyz_in_cur,
+    SE3& T_cur_from_ref)
+{
+  vector<cv::Point2f> uv_ref(f_ref.size());
+  vector<cv::Point2f> uv_cur(f_cur.size());
+  for(size_t i=0, i_max=f_ref.size(); i<i_max; ++i)
+  {
+    uv_ref[i] = project2d(f_ref[i]);
+    uv_cur[i] = project2d(f_cur[i]);
+  }
+  cv::Mat R, t, mask;
+  cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+  //cv::Mat E = cv::findEssentialMat(uv_ref, uv_cur, cameraMatrix, CV_RANSAC,  2./focal_length, 1.0, mask);
+  cv::Mat E = cv::findFundamentalMat(uv_ref, uv_cur, cv::FM_RANSAC, 0.3 / 460, 0.99, mask);
+  cv::recoverPose(E, uv_ref, uv_cur, cameraMatrix, R, t, mask);
+  Eigen::Vector3d T_ref_cur;
+  Eigen::Matrix3d R_ref_cur;
+  R_ref_cur << R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2),
+               R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2),
+               R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2);
+  T_ref_cur << t.at<double>(0),t.at<double>(1),t.at<double>(2);
+  T_cur_from_ref = Sophus::SE3(R_ref_cur, T_ref_cur);
+  std::vector<int> outliers;
+  vk::computeInliers(f_cur, f_ref,
+                     R_ref_cur, T_ref_cur,
+                     reprojection_threshold, focal_length,
+                     xyz_in_cur, inliers, outliers);
+}
 
 } // namespace initialization
 } // namespace svo

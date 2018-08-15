@@ -35,6 +35,16 @@ bool align1D(
     Vector2d& cur_px_estimate,
     double& h_inv);
 
+bool align1D(
+    const cv::Mat& cur_img,
+    const Vector2f& dir,                  // direction in which the patch is allowed to move
+    uint8_t* ref_patch_with_border,
+    uint8_t* ref_patch,
+    const int n_iter,
+    Vector2d& cur_px_estimate,
+    double& h_inv,
+    double& tau_match);
+
 bool align2D(
     const cv::Mat& cur_img,
     uint8_t* ref_patch_with_border,
@@ -43,19 +53,30 @@ bool align2D(
     Vector2d& cur_px_estimate,
     bool no_simd = false);
 
+bool align2D(
+    const cv::Mat& cur_img,
+    uint8_t* ref_patch_with_border,
+    uint8_t* ref_patch,
+    const int n_iter,
+    Vector2d& cur_px_estimate,
+    double& tau_match,
+    bool no_simd = false);
+
 bool align2D_SSE2(
     const cv::Mat& cur_img,
     uint8_t* ref_patch_with_border,
     uint8_t* ref_patch,
     const int n_iter,
-    Vector2d& cur_px_estimate);
+    Vector2d& cur_px_estimate,
+    double& tau_match);
 
 bool align2D_NEON(
     const cv::Mat& cur_img,
     uint8_t* ref_patch_with_border,
     uint8_t* ref_patch,
     const int n_iter,
-    Vector2d& cur_px_estimate);
+    Vector2d& cur_px_estimate,
+    double& tau_match);
 
 } // namespace feature_alignment
 } // namespace svo

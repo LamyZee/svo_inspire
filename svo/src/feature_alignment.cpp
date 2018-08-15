@@ -36,6 +36,21 @@ bool align1D(
     Vector2d& cur_px_estimate,
     double& h_inv)
 {
+    double non_work = 1.f;
+    return align1D(cur_img, dir, ref_patch_with_border, ref_patch, n_iter, cur_px_estimate, h_inv, non_work);
+}
+
+
+bool align1D(
+    const cv::Mat& cur_img,
+    const Vector2f& dir,                  // direction in which the patch is allowed to move
+    uint8_t* ref_patch_with_border,
+    uint8_t* ref_patch,
+    const int n_iter,
+    Vector2d& cur_px_estimate,
+    double& h_inv,
+    double& tau_match)
+{
   const int halfpatch_size_ = 4;
   const int patch_size = 8;
   const int patch_area = 64;
@@ -142,8 +157,20 @@ bool align1D(
     }
   }
 
+  tau_match = std::sqrt(update[0]*update[0]+update[1]*update[1]);
   cur_px_estimate << u, v;
   return converged;
+}
+
+bool align2D(const cv::Mat& cur_img,
+    uint8_t* ref_patch_with_border,
+    uint8_t* ref_patch,
+    const int n_iter,
+    Vector2d& cur_px_estimate,
+    bool no_simd)
+{
+    double non_work;
+    return align2D(cur_img, ref_patch_with_border, ref_patch, n_iter, cur_px_estimate, non_work, no_simd);
 }
 
 bool align2D(
@@ -152,11 +179,12 @@ bool align2D(
     uint8_t* ref_patch,
     const int n_iter,
     Vector2d& cur_px_estimate,
+    double& tau_match,
     bool no_simd)
 {
 #ifdef __ARM_NEON__
   if(!no_simd)
-    return align2D_NEON(cur_img, ref_patch_with_border, ref_patch, n_iter, cur_px_estimate);
+    return align2D_NEON(cur_img, ref_patch_with_border, ref_patch, n_iter, cur_px_estimate, tau_match);
 #endif
 
   const int halfpatch_size_ = 4;
@@ -271,7 +299,7 @@ bool align2D(
       break;
     }
   }
-
+  tau_match = std::sqrt(update[0]*update[0]+update[1]*update[1]);
   cur_px_estimate << u, v;
   return converged;
 }
@@ -283,7 +311,8 @@ bool align2D_SSE2(
     uint8_t* ref_patch_with_border,
     uint8_t* ref_patch,
     const int n_iter,
-    Vector2d& cur_px_estimate)
+    Vector2d& cur_px_estimate,
+    double& tau_match)
 {
   // TODO: This function should not be used as the alignment is not robust to illumination changes!
   const int halfpatch_size = 4;
@@ -440,7 +469,7 @@ bool align2D_SSE2(
     }
     chi2 = new_chi2;
   }
-
+  tau_match = std::sqrt(update_u*update_u+update_v*update_v);
   cur_px_estimate << u, v;
   return converged;
 }
@@ -450,7 +479,8 @@ bool align2D_NEON (
     uint8_t* ref_patch_with_border,
     uint8_t* ref_patch,
     const int n_iter,
-    Vector2d& cur_px_estimate)
+    Vector2d& cur_px_estimate,
+    double& tau_match)
 {
   const int halfpatch_size = 4;
   const int patch_size = 8;
@@ -592,7 +622,7 @@ bool align2D_NEON (
       break;
     }
   }
-
+  tau_match = std::sqrt(update[0]*update[0]+update[1]*update[1]);
   cur_px_estimate << u, v;
   return converged;
 }

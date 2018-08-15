@@ -62,7 +62,7 @@ class BenchmarkNode
 public:
     BenchmarkNode();
     ~BenchmarkNode();
-    void addImage(const cv::Mat& image, double timestamp);
+    void addImage(const cv::Mat& _image, double timestamp);
     vk::AbstractCamera* cam_;
     svo::FrameHandlerMono* vo_;
     svo::Visualizer visualizer_;
@@ -77,7 +77,8 @@ BenchmarkNode::BenchmarkNode()
     Eigen::Vector3d(vk::getParam<double>("svo/init_tx", 0.0),
                     vk::getParam<double>("svo/init_ty", 0.0),
                     vk::getParam<double>("svo/init_tz", 0.0)));
-    cam_ = new vk::PinholeCamera(752, 480, 461.6, 460.3, 363.0, 248.1);
+    cam_ = new vk::PinholeCamera(752, 480, 461.6, 460.3, 363.0, 248.1, 
+        0.2917, 0.08228, 5.333e-05, -1.578e-04, 0.f);
     vo_ = new svo::FrameHandlerMono(cam_);
     vo_->start();
 }
@@ -91,11 +92,16 @@ BenchmarkNode::~BenchmarkNode()
 bool publish_markers_ = true;
 bool publish_dense_input_ = true;
 
-void BenchmarkNode::addImage(const cv::Mat& image, double timestamp)
+void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
 {
-    if(!image.empty() && !first_image_flag){
+    if(!_image.empty() && !first_image_flag){
         //load image.
-        vo_->addImage(image, timestamp);
+#if 0        
+        cv::Mat image;
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
+        clahe->apply(_image, image);
+#endif        
+        vo_->addImage(_image, timestamp);
 
         if(vo_->lastFrame() != NULL){
 /*            std::cout << "Frame-Id: " << vo_->lastFrame()->id_ << " \t"

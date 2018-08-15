@@ -153,14 +153,14 @@ TARGET_LINK_LIBRARIES(svo ${LINK_LIBS})
 ################################################################################
 # TESTS
 
-ADD_EXECUTABLE(test_feature_align test/test_feature_alignment.cpp)
-TARGET_LINK_LIBRARIES(test_feature_align svo)
+#ADD_EXECUTABLE(test_feature_align test/test_feature_alignment.cpp)
+#TARGET_LINK_LIBRARIES(test_feature_align svo)
 
 ADD_EXECUTABLE(test_pipeline test/test_pipeline.cpp)
 TARGET_LINK_LIBRARIES(test_pipeline svo)
 
-ADD_EXECUTABLE(test_matcher test/test_matcher.cpp)
-TARGET_LINK_LIBRARIES(test_matcher svo)
+#ADD_EXECUTABLE(test_matcher test/test_matcher.cpp)
+#TARGET_LINK_LIBRARIES(test_matcher svo)
 
 ADD_EXECUTABLE(test_feature_detection test/test_feature_detection.cpp)
 TARGET_LINK_LIBRARIES(test_feature_detection svo)

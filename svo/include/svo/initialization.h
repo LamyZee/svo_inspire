@@ -77,6 +77,19 @@ void computeHomography(
     vector<Vector3d>& xyz_in_cur,
     SE3& T_cur_from_ref);
 
+void computeEssential(
+    const vector<Vector3d>& f_ref,
+    const vector<Vector3d>& f_cur,
+    double focal_length,
+    double reprojection_threshold,
+    vector<int>& inliers,
+    vector<Vector3d>& xyz_in_cur,
+    SE3& T_cur_from_ref);
+
+inline cv::Point2f project2d(const Eigen::Vector3d& input){
+  return cv::Point2f(input[0] / input[2], input[1] / input[2]);
+};
+
 } // namespace initialization
 } // namespace svo
 

@@ -234,8 +234,9 @@ void DepthFilter::updateSeeds(FramePtr frame)
     float z_inv_min = it->mu + sqrt(it->sigma2);
     float z_inv_max = max(it->mu - sqrt(it->sigma2), 0.00000001f);
     double z;
+    double tau_match = 1.f;
     if(!matcher_.findEpipolarMatchDirect(
-        *it->ftr->frame, *frame, *it->ftr, 1.0/it->mu, 1.0/z_inv_min, 1.0/z_inv_max, z))
+        *it->ftr->frame, *frame, *it->ftr, 1.0/it->mu, 1.0/z_inv_min, 1.0/z_inv_max, z, tau_match))
     {
       it->b++; // increase outlier probability when no match was found
       ++it;
@@ -244,7 +245,7 @@ void DepthFilter::updateSeeds(FramePtr frame)
     }
 
     // compute tau
-    double tau = computeTau(T_ref_cur, it->ftr->f, z, px_error_angle);
+    double tau = computeTau(T_ref_cur, it->ftr->f, z, px_error_angle * tau_match);
     double tau_inverse = 0.5 * (1.0/max(0.0000001, z-tau) - 1.0/(z+tau));
 
     // update the estimate

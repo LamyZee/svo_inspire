@@ -110,7 +110,7 @@ int FrameHandlerBase::finishFrameProcessingCommon(
     const UpdateResult dropout,
     const size_t num_observations)
 {
-  SVO_DEBUG_STREAM("Frame: "<<update_id<<"\t fps-avg = "<< 1.0/acc_frame_timings_.getMean()<<"\t nObs = "<<acc_num_obs_.getMean());
+  SVO_INFO_STREAM("Frame: "<<update_id<<"\t fps-avg = "<< 1.0/acc_frame_timings_.getMean()<<"\t nObs = "<<acc_num_obs_.getMean());
   SVO_LOG(dropout);
 
   // save processing time to calculate fps

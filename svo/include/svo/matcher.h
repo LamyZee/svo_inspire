@@ -120,7 +120,8 @@ public:
       const double d_estimate,
       const double d_min,
       const double d_max,
-      double& depth);
+      double& depth,
+      double& tau_match);
 
   void createPatchFromPatchWithBorder();
 };
