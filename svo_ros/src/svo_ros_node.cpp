@@ -109,9 +109,9 @@ void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
                       << "Proc. Time: " << vo_->lastProcessingTime()*1000 << "ms \n";*/
             // access the pose of the camera via vo_->lastFrame()->T_f_w_.
         }
-        visualizer_.publishMinimal(image, vo_->lastFrame(), *vo_, timestamp);
+        visualizer_.publishMinimal(_image, vo_->lastFrame(), *vo_, timestamp);
 
-#if 0        
+#if 1        
         if(publish_markers_ && vo_->stage() != svo::FrameHandlerBase::STAGE_PAUSED)
             visualizer_.visualizeMarkers(vo_->lastFrame(), vo_->coreKeyframes(), vo_->map());
 

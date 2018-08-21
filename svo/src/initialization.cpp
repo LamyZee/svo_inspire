@@ -221,9 +221,10 @@ void computeEssential(
   }
   cv::Mat R, t, mask;
   cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-  //cv::Mat E = cv::findEssentialMat(uv_ref, uv_cur, cameraMatrix, CV_RANSAC,  2./focal_length, 1.0, mask);
-  cv::Mat E = cv::findFundamentalMat(uv_ref, uv_cur, cv::FM_RANSAC, 0.3 / 460, 0.99, mask);
-  cv::recoverPose(E, uv_ref, uv_cur, cameraMatrix, R, t, mask);
+  cv::Mat E = cv::findEssentialMat(uv_ref, uv_cur, cameraMatrix, CV_RANSAC,  2./focal_length, 1.0, mask);
+  //cv::Mat E = cv::findFundamentalMat(uv_ref, uv_cur, cv::FM_RANSAC, 0.3 / 460, 0.99, mask);
+  recoverPose(E, uv_ref, uv_cur, cameraMatrix, R, t, mask);
+  SVO_INFO_STREAM("LINE 227");
   Eigen::Vector3d T_ref_cur;
   Eigen::Matrix3d R_ref_cur;
   R_ref_cur << R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2),
