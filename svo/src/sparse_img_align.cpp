@@ -54,7 +54,11 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
   cur_frame_ = cur_frame;
   ref_patch_cache_ = cv::Mat(ref_frame_->fts_.size(), patch_area_, CV_32F);
   jacobian_cache_.resize(Eigen::NoChange, ref_patch_cache_.rows*patch_area_);
-  visible_fts_.resize(ref_patch_cache_.rows, false); // TODO: should it be reset at each level?
+  jacobian_cache_exposure_.resize(Eigen::NoChange, ref_patch_cache_.rows*patch_area_);
+  cur_ref_exposure_ = Eigen::Vector2D(cur_frame_->ab_exposure/ref_frame_->ab_exposure, 0);
+
+  // TODO: should it be reset at each level?
+  visible_fts_.resize(ref_patch_cache_.rows, false);
 
   SE3 T_cur_from_ref(cur_frame_->T_f_w_ * ref_frame_->T_f_w_.inverse());
 
@@ -62,14 +66,13 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
   {
     mu_ = 0.1;
     jacobian_cache_.setZero();
+    jacobian_cache_exposure_.setZero();
     have_ref_patch_cache_ = false;
     if(verbose_)
       printf("\nPYRAMID LEVEL %i\n---------------\n", level_);
     optimize(T_cur_from_ref);
   }
   cur_frame_->T_f_w_ = T_cur_from_ref * ref_frame_->T_f_w_;
-
-
 
   return n_meas_/patch_area_;
 }
@@ -136,8 +139,10 @@ void SparseImgAlign::precomputeReferencePatches()
                           -(w_ref_tl*ref_img_ptr[-stride] + w_ref_tr*ref_img_ptr[1-stride] + w_ref_bl*ref_img_ptr[0] + w_ref_br*ref_img_ptr[1]));
 
         // cache the jacobian
-        jacobian_cache_.col(feature_counter*patch_area_ + pixel_counter) =
+        const int col_count = feature_counter*patch_area_ + pixel_counter; 
+        jacobian_cache_.col(col_count) =
             (dx*frame_jac.row(0) + dy*frame_jac.row(1))*(focal_length / (1<<level_));
+        // jacobian_cache_exposure_.col(col_count) = 
       }
     }
   }
@@ -213,7 +218,17 @@ double SparseImgAlign::computeResiduals(
         if(compute_weight_scale)
           errors.push_back(fabsf(res));
 
-        // robustification
+        const Eigen::Matrix<double, 2, 1, ColMajor> jacobian_exposuse_(cur_ref_exposure_[0] * intensity_cur, 1.f);
+
+        //jacobian_cache_exposure_.col(col_count) = Eigen::Vector2d()
+/**
+ * TODO:: Lamy, weight function use LK optical flow method or DSO huber? possible need more test to choose which one.
+ * Interface for weight functions. A weight function is the first derivative of a symmetric robust function p(sqrt(t)).
+ * The errors are assumed to be normalized to unit variance.
+ *
+ * See:
+ *   "Lucas-Kanade 20 Years On: A Unifying Framework: Part 2" - Page 23, Equation (54)
+ */
         float weight = 1.0;
         if(use_weights_) {
           weight = weight_function_->value(res/scale_);
@@ -225,7 +240,8 @@ double SparseImgAlign::computeResiduals(
         if(linearize_system)
         {
           // compute Jacobian, weighted Hessian and weighted "steepest descend images" (times error)
-          const Vector6d J(jacobian_cache_.col(feature_counter*patch_area_ + pixel_counter));
+          const Vector8d J(jacobian_cache_.col(feature_counter*patch_area_ + pixel_counter),
+                          jacobian_exposuse_);
           H_.noalias() += J*J.transpose()*weight;
           Jres_.noalias() -= J*res*weight;
           if(display_)

@@ -57,6 +57,7 @@ INCLUDE_DIRECTORIES(
   ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIRS}../svo/3rd/vikit/include
+  ${PROJECT_SOURCE_DIRS}../svo/online_calibration
 )
 
 # Set link libraries

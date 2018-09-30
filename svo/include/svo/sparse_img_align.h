@@ -30,11 +30,13 @@ namespace svo {
 class Feature;
 
 /// Optimize the pose of the frame by minimizing the photometric error of feature patches.
-class SparseImgAlign : public vk::NLLSSolver<6, SE3>
+class SparseImgAlign : public vk::NLLSSolver<8, Eigen::Matrix<double, 8, 1>>
+//class SparseImgAlign : public vk::NLLSSolver<6, SE3>
 {
   static const int patch_halfsize_ = 2;
   static const int patch_size_ = 2*patch_halfsize_;
   static const int patch_area_ = patch_size_*patch_size_;
+  static const double setting_huberTH_ = 9.f;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -54,7 +56,8 @@ public:
 
   /// Return fisher information matrix, i.e. the Hessian of the log-likelihood
   /// at the converged state.
-  Matrix<double, 6, 6> getFisherInformation();
+  Matrix<double, 8, 8> getFisherInformation();
+  //Matrix<double, 6, 6> getFisherInformation();
 
 protected:
   FramePtr ref_frame_;            //!< reference frame, has depth for gradient pixels.
@@ -63,15 +66,27 @@ protected:
   bool display_;                  //!< display residual image.
   int max_level_;                 //!< coarsest pyramid level for the alignment.
   int min_level_;                 //!< finest pyramid level for the alignment.
-
+  //AffLight cur_ref_exposure_;        // cur_exposure/ref_exposure
+  Eigen::Vector2d cur_ref_exposure_;  
   // cache:
   Matrix<double, 6, Dynamic, ColMajor> jacobian_cache_;
+  Matrix<double, 2, Dynamic, ColMajor> jacobian_cache_exposure_;
+  //Matrix<double, 6, Dynamic, ColMajor> jacobian_cache_;
   bool have_ref_patch_cache_;
   cv::Mat ref_patch_cache_;
   std::vector<bool> visible_fts_;
 
   void precomputeReferencePatches();
-  virtual double computeResiduals(const SE3& model, bool linearize_system, bool compute_weight_scale = false);
+
+  inline double huberWeight(const double& residual) {
+    return std::fabs(residual) < setting_huberTH_
+                ? 1 : setting_huberTH_ / std::fabs(residual);
+  }
+
+  virtual double computeResiduals(const Eigen::Matrix<double, 8, 1>&model,
+      bool linearize_system, bool compute_weight_scale = false);
+//  virtual double computeResiduals(const SE3& model, bool linearize_system,
+//      bool compute_weight_scale = false);
   virtual int solve();
   virtual void update (const ModelType& old_model, ModelType& new_model);
   virtual void startIteration();

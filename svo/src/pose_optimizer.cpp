@@ -87,6 +87,7 @@ void optimizeGaussNewton(
       if(iter == 0)
         chi2_vec_init.push_back(e.squaredNorm()); // just for debug
       J *= sqrt_inv_cov;
+      //TODO:: Try Huber loss function?
       double weight = weight_function.value(e.norm()/scale);
       A.noalias() += J.transpose()*J*weight;
       b.noalias() -= J.transpose()*e*weight;

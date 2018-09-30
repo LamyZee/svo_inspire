@@ -20,6 +20,7 @@
 #include <svo/map.h>
 #include <svo/config.h>
 #include <svo_ros/visualizer.h>
+#include <svo/image_utils.h>
 #include <vikit/file_reader.h>
 #include <vikit/params_helper.h>
 #include <vikit/camera_loader.h>
@@ -36,6 +37,20 @@
 #include <boost/thread.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <Eigen/Core>
+
+// Online Photometric Calibration of Auto Exposure Video for Realtime 
+// Visual Odometry and SLAM (P. Bergmann, R. Wang, D. Cremers), 
+// In IEEE Robotics and Automation Letters (RA-L), volume 3, 2018.
+// https://github.com/tum-vision/online_photometric_calibration.git
+// online photometric calibration header file.
+#include "online_calib_include/StandardIncludes.h"
+#include "online_calib_include/ImageReader.h"
+#include "online_calib_include/Tracker.h"
+#include "online_calib_include/RapidExposureTimeEstimator.h"
+#include "online_calib_include/Database.h"
+#include "online_calib_include/NonlinearOptimizer.h"
+#include "online_calib_include/CLI11.hpp"
+
 
 #define ROW 480
 #define COL 752
@@ -57,15 +72,36 @@ double last_image_time = 0;
 bool init_pub = 0;
 
 
+// online photometric calibration setting struct
+struct Settings{
+    int start_image_index;      // Start image index.
+    int end_image_index;        // End image index.
+    int image_width;            // Image width to resize to.
+    int image_height;           // Image height to resize to.
+    int visualize_cnt;          // Visualize every visualize_cnt image (tracking + correction), rather slow.
+    int tracker_patch_size;     // Image patch size used in tracker.
+    int nr_pyramid_levels;      // Number of image pyramid levels used in tracker.
+    int nr_active_features;     // Number of features maintained for each frame.
+    int nr_images_rapid_exp;    // Number of images for rapid exposure time estimation.
+    int nr_active_frames;       // Number of frames maintained in database.
+    int keyframe_spacing;       // Spacing for sampling keyframes in backend optimization.
+    int min_keyframes_valid;    // Minimum amount of keyframes a feature should be present to be included in optimization.
+    string image_folder;        // Image folder.
+    string exposure_gt_file;    // Exposure times ground truth file.
+    string calibration_mode;    // Choose "online" or "batch".
+};
+
 class BenchmarkNode
 {
 public:
     BenchmarkNode();
     ~BenchmarkNode();
     void addImage(const cv::Mat& _image, double timestamp);
-    vk::AbstractCamera* cam_;
-    svo::FrameHandlerMono* vo_;
-    svo::Visualizer visualizer_;
+    vk::AbstractCamera* cam_;       // camera model and parameters
+    svo::FrameHandlerMono* vo_;     // svo mono class
+    svo::Visualizer visualizer_;    // visualizer for ros
+    Settings run_settings;          // online photometric calibration settings
+    cv::Mat pre_image_;             // store pre image for Brightness Histogram
 };
 
 BenchmarkNode::BenchmarkNode()
@@ -79,6 +115,24 @@ BenchmarkNode::BenchmarkNode()
                     vk::getParam<double>("svo/init_tz", 0.0)));
     cam_ = new vk::PinholeCamera(752, 480, 461.6, 460.3, 363.0, 248.1, 
         0.2917, 0.08228, 5.333e-05, -1.578e-04, 0.f);
+
+    // online photometric calibration settings
+    run_settings.start_image_index   = 0;      
+    run_settings.end_image_index     = -1;
+    run_settings.image_width         = ROW;    
+    run_settings.image_height        = COL;   
+    run_settings.visualize_cnt       = 1;       
+    run_settings.tracker_patch_size  = 3;       
+    run_settings.nr_pyramid_levels   = 2;       
+    run_settings.nr_active_features  = 200;     
+    run_settings.nr_images_rapid_exp = 15;     
+    // run_settings.image_folder = "images";
+    // run_settings.exposure_gt_file = "times.txt";
+    run_settings.calibration_mode = "online";
+    run_settings.nr_active_frames    = 200;    
+    run_settings.keyframe_spacing    = 15; 
+    run_settings.min_keyframes_valid = 3;    
+
     vo_ = new svo::FrameHandlerMono(cam_);
     vo_->start();
 }
@@ -91,9 +145,26 @@ BenchmarkNode::~BenchmarkNode()
 
 bool publish_markers_ = true;
 bool publish_dense_input_ = true;
-
+bool first_image_flag_bri = true;
 void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
 {
+    if (first_image_flag_bri) {
+      pre_image_ = _image;
+      first_image_flag_bri = false;
+    }
+
+    std::vector<int> hist_cur, hist_pre;
+    int avg_cur = 1, avg_pre = 1;
+    svo::image::sampleBrightnessHistogram(_image, &hist_cur, &avg_cur);
+    svo::image::sampleBrightnessHistogram(pre_image_, &hist_pre, &avg_pre);
+    float pre_scale = svo::image::matchingHistogram(hist_pre,
+                                        hist_cur,
+                                        static_cast<float>(avg_cur) / avg_pre);
+
+    // [NOTE] cv::Mat_<uchar> automatically handles the clipping of uchar
+    cv::Mat image_input;
+    image_input = _image / pre_scale;
+
     if(!_image.empty() && !first_image_flag){
         //load image.
 #if 0        
@@ -101,15 +172,17 @@ void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
         clahe->apply(_image, image);
 #endif        
-        vo_->addImage(_image, timestamp);
-
+        //vo_->addImage(_image, timestamp);
+        vo_->addImage(image_input, timestamp);
+        pre_image_ = _image;
         if(vo_->lastFrame() != NULL){
 /*            std::cout << "Frame-Id: " << vo_->lastFrame()->id_ << " \t"
                       << "#Features: " << vo_->lastNumObservations() << " \t"
                       << "Proc. Time: " << vo_->lastProcessingTime()*1000 << "ms \n";*/
             // access the pose of the camera via vo_->lastFrame()->T_f_w_.
         }
-        visualizer_.publishMinimal(_image, vo_->lastFrame(), *vo_, timestamp);
+        //visualizer_.publishMinimal(_image, vo_->lastFrame(), *vo_, timestamp);
+        visualizer_.publishMinimal(image_input, vo_->lastFrame(), *vo_, timestamp);
 
 #if 1        
         if(publish_markers_ && vo_->stage() != svo::FrameHandlerBase::STAGE_PAUSED)
@@ -118,7 +191,7 @@ void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
         if(publish_dense_input_)
             visualizer_.exportToDense(vo_->lastFrame());
 #endif    
-        }
+    }
 }
 
 void process(const sensor_msgs::ImageConstPtr &img_msg)

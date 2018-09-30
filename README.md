@@ -1,5 +1,7 @@
 # svo_inspire
 
+The newest commit cannot be successed compile. 20189030
+
 SVO is a good opensorce visual odometry, it's fast enough to be deploied on UAV.
 This version will add some other ideas, such as the strategy of svo_edgelet, faster depth filter, etc.
 

@@ -42,7 +42,7 @@ IF(CMAKE_COMPILER_IS_GNUCC)
 ELSE()
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 ENDIF()
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -Wno-sign-compare")
 
 # Add plain cmake packages 
 FIND_PACKAGE(OpenCV REQUIRED)
@@ -77,6 +77,7 @@ INCLUDE_DIRECTORIES(
 #  ${fast_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/3rd/fast/include/
   ${PROJECT_SOURCE_DIR}/3rd/vikit/include/
+  ${PROJECT_SOURCE_DIR}/online_calibration/
 )
 
 SET(Sophus_LIBRARIES libSophus.so)
@@ -131,7 +132,18 @@ LIST(APPEND SOURCEFILES
   src/depth_filter.cpp
   src/config.cpp
   src/sparse_img_align.cpp
-  src/solve_5points.cpp)
+  src/solve_5points.cpp
+  src/image_utils.cpp
+  online_calibration/Database.cpp
+  online_calibration/JacobianGenerator.cpp
+  online_calibration/Tracker.cpp
+  online_calibration/GainRobustTracker.cpp
+  online_calibration/OptimizationBlock.cpp
+  online_calibration/VignetteModel.cpp
+  online_calibration/ImageReader.cpp
+  online_calibration/NonlinearOptimizer.cpp
+  online_calibration/RapidExposureTimeEstimator.cpp
+)
 
 # Add g2o if available
 IF(HAVE_G2O)
