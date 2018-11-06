@@ -56,6 +56,7 @@ void Frame::initFrame(const cv::Mat& img)
 
   // Build Image Pyramid
   frame_utils::createImgPyramid(img, max(Config::nPyrLevels(), Config::kltMaxLevel()+1), img_pyr_);
+  expAB_struct_ = AffLight(0,0);
 }
 
 void Frame::setKeyframe()

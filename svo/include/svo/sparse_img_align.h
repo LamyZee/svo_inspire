@@ -36,7 +36,7 @@ class SparseImgAlign : public vk::NLLSSolver<8, Eigen::Matrix<double, 8, 1>>
   static const int patch_halfsize_ = 2;
   static const int patch_size_ = 2*patch_halfsize_;
   static const int patch_area_ = patch_size_*patch_size_;
-  static const double setting_huberTH_ = 9.f;
+  static constexpr double setting_huberTH_ = 9.f;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -83,8 +83,18 @@ protected:
                 ? 1 : setting_huberTH_ / std::fabs(residual);
   }
 
-  virtual double computeResiduals(const Eigen::Matrix<double, 8, 1>&model,
-      bool linearize_system, bool compute_weight_scale = false);
+#ifdef ORIGIN
+virtual double computeResiduals(
+    const SE3& T_cur_from_ref,
+    bool linearize_system,
+    bool compute_weight_scale);
+#else
+virtual double computeResiduals(
+    const Eigen::Matrix<double, 8, 1>& T_cur_from_ref,
+    bool linearize_system,
+    bool compute_weight_scale);
+#endif
+
 //  virtual double computeResiduals(const SE3& model, bool linearize_system,
 //      bool compute_weight_scale = false);
   virtual int solve();

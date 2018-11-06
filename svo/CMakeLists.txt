@@ -5,6 +5,7 @@ SET(TRACE TRUE)
 SET(HAVE_G2O FALSE) 
 SET(USE_ROS TRUE) # Set FALSE if you want to build this package without Catkin
 SET(DEBUG_OUTPUT FALSE) # Only relevant if build without ROS
+SET(MODULE_TEST FALSE) # Generic module test exe
 
 ################################################################################
 
@@ -166,9 +167,10 @@ TARGET_LINK_LIBRARIES(svo ${LINK_LIBS})
 ################################################################################
 # TESTS
 
+IF(MODULE_TEST)
 #ADD_EXECUTABLE(test_feature_align test/test_feature_alignment.cpp)
 #TARGET_LINK_LIBRARIES(test_feature_align svo)
-
+MESSAGE("Generic module test executable")
 ADD_EXECUTABLE(test_pipeline test/test_pipeline.cpp)
 TARGET_LINK_LIBRARIES(test_pipeline svo)
 
@@ -186,3 +188,4 @@ TARGET_LINK_LIBRARIES(test_sparse_img_align svo)
 
 ADD_EXECUTABLE(test_pose_optimizer test/test_pose_optimizer.cpp)
 TARGET_LINK_LIBRARIES(test_pose_optimizer svo) 
+ENDIF()

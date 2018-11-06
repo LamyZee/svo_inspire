@@ -57,6 +57,7 @@ FrameHandlerMono::~FrameHandlerMono()
 
 void FrameHandlerMono::addImage(const cv::Mat& img, const double timestamp)
 {
+
   if(!startFrameProcessingCommon(timestamp))
     return;
 
@@ -135,7 +136,6 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
 {
   // Set initial pose TODO use prior
   new_frame_->T_f_w_ = last_frame_->T_f_w_;
-
   // sparse image align
   SVO_START_TIMER("sparse_img_align");
   SparseImgAlign img_align(Config::kltMaxLevel(), Config::kltMinLevel(),

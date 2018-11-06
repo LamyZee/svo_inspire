@@ -30,6 +30,55 @@ typedef g2o::VertexSE3Expmap g2oFrameSE3;
 
 namespace svo {
 
+/**
+* This file is part of DSO.
+* 
+* Copyright 2016 Technical University of Munich and Intel.
+* Developed by Jakob Engel <engelj at in dot tum dot de>,
+* for more information see <http://vision.in.tum.de/dso>.
+* If you use this code, please cite the respective publications as
+* listed on the above website.
+*
+* DSO is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* DSO is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with DSO. If not, see <http://www.gnu.org/licenses/>.
+*/
+// transforms points from one frame to another.
+struct AffLight
+{
+    AffLight(double a_, double b_) : a(a_), b(b_) {};
+    AffLight() : a(0), b(0) {};
+    // Affine Parameters:
+    // I_global = exp(-a)*(I_frame - b). Lamy
+    // I_frame = exp(a)*I_global + b. Lamy
+    double a,b; 
+    static Eigen::Vector2d fromToVecExposure(
+        float exposureF, float exposureT,
+        AffLight g2F, AffLight g2T) {
+        if(exposureF==0 || exposureT==0) {
+           exposureT = exposureF = 1;
+          //printf("got exposure value of 0! please choose the correct model.\n");
+          //assert(setting_brightnessTransferFunc < 2);
+        }
+        double a = exp(g2T.a-g2F.a) * exposureT / exposureF;
+        double b = g2T.b - a*g2F.b;
+        return Eigen::Vector2d(a,b);
+    }
+
+    Eigen::Vector2d vec() {
+        return Eigen::Vector2d(a,b);
+    }
+};
+
 class Point;
 struct Feature;
 
@@ -55,7 +104,7 @@ public:
   g2oFrameSE3*                  v_kf_;                  //!< Temporary pointer to the g2o node object of the keyframe.
   int                           last_published_ts_;     //!< Timestamp of last publishing.
   double                        ab_exposure;            // copy from DSO, exposure time and exp value
-  AffLight                        expAB_struct_;          // struct of expose para
+  AffLight                      expAB_struct_;          // struct of expose para
   Frame(vk::AbstractCamera* cam, const cv::Mat& img, double timestamp);
   ~Frame();
 
@@ -137,54 +186,6 @@ public:
     J(1,4) = -J(0,3);             // -x*y/z^2
     J(1,5) = -x*z_inv;            // x/z
   }
-};
-
-/**
-* This file is part of DSO.
-* 
-* Copyright 2016 Technical University of Munich and Intel.
-* Developed by Jakob Engel <engelj at in dot tum dot de>,
-* for more information see <http://vision.in.tum.de/dso>.
-* If you use this code, please cite the respective publications as
-* listed on the above website.
-*
-* DSO is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* DSO is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with DSO. If not, see <http://www.gnu.org/licenses/>.
-*/
-// transforms points from one frame to another.
-struct AffLight
-{
-    AffLight(double a_, double b_) : a(a_), b(b_) {};
-    AffLight() : a(0), b(0) {};
-    // Affine Parameters:
-    // I_global = exp(-a)*(I_frame - b). Lamy
-    // I_frame = exp(a)*I_global + b. Lamy
-    double a,b; 
-    static Vec2 fromToVecExposure(float exposureF, float exposureT,
-        AffLight g2F, AffLight g2T) {
-        if(exposureF==0 || exposureT==0) {
-           exposureT = exposureF = 1;
-          //printf("got exposure value of 0! please choose the correct model.\n");
-          //assert(setting_brightnessTransferFunc < 2);
-        }
-        double a = exp(g2T.a-g2F.a) * exposureT / exposureF;
-        double b = g2T.b - a*g2F.b;
-        return Eigen::Vector2d(a,b);
-    }
-
-    Eigen::Vector2d vec() {
-        return Eigen::Vector2d(a,b);
-    }
 };
 
 inline static void jacobian_photo(Eigen::Vector2d& J) {
