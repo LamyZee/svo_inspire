@@ -79,18 +79,24 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
     have_ref_patch_cache_ = false;
     if(verbose_)
       printf("\nPYRAMID LEVEL %i\n---------------\n", level_);
+#if ORIGIN    
     SE3 res_delta_pose = T_cur_from_ref;
     Eigen::Matrix<double, 6, 1> T_cur_from_ref_Vector
               = SE3::log(res_delta_pose);
     optimize_poseAff.block<6, 1>(0, 0) = T_cur_from_ref_Vector;
+#endif    
+    optimize_poseAff.block<6, 1>(0, 0) = SE3::log(T_cur_from_ref);
     optimize_poseAff.block<2, 1>(6, 0) = res_expose_;
     optimize(optimize_poseAff);
     T_cur_from_ref = SE3::exp(optimize_poseAff.block<6, 1>(0, 0));
+    printf("exposure a = %f, b = %f\n", optimize_poseAff[6], optimize_poseAff[7]);
+    res_expose_ = Eigen::Vector2d(optimize_poseAff[6], optimize_poseAff[7]);
     //cur_frame_->T_f_w_ = res_delta_pose * ref_frame_->T_f_w_;
     //optimize(T_cur_from_ref);
   }
   cur_frame_->T_f_w_ = T_cur_from_ref * ref_frame_->T_f_w_;
   cur_frame_->expAB_struct_ = AffLight(res_expose_[0], res_expose_[1]);
+  printf("res_expose_[0] = %f, res_expose_[0] = %f\n", res_expose_[0], res_expose_[1]);
   return n_meas_/patch_area_;
 }
 

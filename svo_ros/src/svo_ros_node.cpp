@@ -153,6 +153,7 @@ void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
       first_image_flag_bri = false;
     }
 
+#ifdef USE_BAIDU_HISTOGRAM
     std::vector<int> hist_cur, hist_pre;
     int avg_cur = 1, avg_pre = 1;
     svo::image::sampleBrightnessHistogram(_image, &hist_cur, &avg_cur);
@@ -164,16 +165,20 @@ void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
     // [NOTE] cv::Mat_<uchar> automatically handles the clipping of uchar
     cv::Mat image_input;
     image_input = _image / pre_scale;
+#endif
 
     if(!_image.empty() && !first_image_flag){
         //load image.
-#if 0        
+#if 0
         cv::Mat image;
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
         clahe->apply(_image, image);
-#endif        
-        //vo_->addImage(_image, timestamp);
+#endif
+#ifdef USE_BAIDU_HISTOGRAM
         vo_->addImage(image_input, timestamp);
+#else
+        vo_->addImage(_image, timestamp);
+#endif
         pre_image_ = _image;
         if(vo_->lastFrame() != NULL){
 /*            std::cout << "Frame-Id: " << vo_->lastFrame()->id_ << " \t"
@@ -181,8 +186,11 @@ void BenchmarkNode::addImage(const cv::Mat& _image, double timestamp)
                       << "Proc. Time: " << vo_->lastProcessingTime()*1000 << "ms \n";*/
             // access the pose of the camera via vo_->lastFrame()->T_f_w_.
         }
-        //visualizer_.publishMinimal(_image, vo_->lastFrame(), *vo_, timestamp);
+#ifdef USE_BAIDU_HISTOGRAM
         visualizer_.publishMinimal(image_input, vo_->lastFrame(), *vo_, timestamp);
+#else
+        visualizer_.publishMinimal(_image, vo_->lastFrame(), *vo_, timestamp);
+#endif
 
 #if 1        
         if(publish_markers_ && vo_->stage() != svo::FrameHandlerBase::STAGE_PAUSED)
