@@ -56,20 +56,28 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
   ref_patch_cache_ = cv::Mat(ref_frame_->fts_.size(), patch_area_, CV_32F);
   jacobian_cache_.resize(Eigen::NoChange, ref_patch_cache_.rows*patch_area_);
   jacobian_cache_exposure_.resize(Eigen::NoChange, ref_patch_cache_.rows*patch_area_);
-  cur_ref_exposure_ = Eigen::Vector2d(cur_frame_->ab_exposure/ref_frame_->ab_exposure, 0);
+  //cur_ref_exposure_ = Eigen::Vector2d(logf(cur_frame_->ab_exposure/ref_frame_->ab_exposure), 0);
+/*  cur_ref_exposure_ =
+    AffLight::fromToVecExposure(cur_frame_->expAB_struct_,
+                                ref_frame_->expAB_struct_);*/
+
+  cur_ref_exposure_ =
+    AffLight::fromToVecExposure(AffLight(0, 0),
+                                AffLight(0, 0));
+
   // TODO: should it be reset at each level?
   visible_fts_.resize(ref_patch_cache_.rows, false);
 
   SE3 T_cur_from_ref(cur_frame_->T_f_w_ * ref_frame_->T_f_w_.inverse());
 
-#if 1
+#if 0
   Eigen::Vector2d res_expose_ = AffLight::fromToVecExposure(
                                     cur_frame_->ab_exposure,
                                     ref_frame_->ab_exposure,
                                     cur_frame_->expAB_struct_,
                                     ref_frame_->expAB_struct_);
-  Eigen::Matrix<double, 8, 1> optimize_poseAff;
 #endif
+  Eigen::Matrix<double, 8, 1> optimize_poseAff;
   for(level_=max_level_; level_>=min_level_; --level_)
   {
     mu_ = 0.1;
@@ -86,17 +94,21 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
     optimize_poseAff.block<6, 1>(0, 0) = T_cur_from_ref_Vector;
 #endif    
     optimize_poseAff.block<6, 1>(0, 0) = SE3::log(T_cur_from_ref);
-    optimize_poseAff.block<2, 1>(6, 0) = res_expose_;
+    optimize_poseAff.block<2, 1>(6, 0) = cur_ref_exposure_;
     optimize(optimize_poseAff);
     T_cur_from_ref = SE3::exp(optimize_poseAff.block<6, 1>(0, 0));
     printf("exposure a = %f, b = %f\n", optimize_poseAff[6], optimize_poseAff[7]);
-    res_expose_ = Eigen::Vector2d(optimize_poseAff[6], optimize_poseAff[7]);
+    cur_ref_exposure_ = Eigen::Vector2d(optimize_poseAff[6], optimize_poseAff[7]);
     //cur_frame_->T_f_w_ = res_delta_pose * ref_frame_->T_f_w_;
     //optimize(T_cur_from_ref);
   }
   cur_frame_->T_f_w_ = T_cur_from_ref * ref_frame_->T_f_w_;
-  cur_frame_->expAB_struct_ = AffLight(res_expose_[0], res_expose_[1]);
-  printf("res_expose_[0] = %f, res_expose_[0] = %f\n", res_expose_[0], res_expose_[1]);
+
+  cur_frame_->expAB_struct_ =
+    AffLight(ref_frame_->expAB_struct_.a - logf(cur_ref_exposure_[0]),
+             ref_frame_->expAB_struct_.b - cur_ref_exposure_[1]);
+
+  //printf("res_expose_[0] = %f, res_expose_[0] = %f\n", res_expose_[0], res_expose_[1]);
   return n_meas_/patch_area_;
 }
 
@@ -256,15 +268,17 @@ double SparseImgAlign::computeResiduals(
         // compute residual
         const float intensity_cur = w_cur_tl*cur_img_ptr[0] + w_cur_tr*cur_img_ptr[1] 
             + w_cur_bl*cur_img_ptr[stride] + w_cur_br*cur_img_ptr[stride+1];
-        const float res = intensity_cur - (*ref_patch_cache_ptr);
+        const float res = intensity_cur
+            - (*ref_patch_cache_ptr)*cur_ref_exposure_[0] - cur_ref_exposure_[1];
 
         // used to compute scale for robust cost
         if(compute_weight_scale)
           errors.push_back(fabsf(res));
-/*        const Eigen::Matrix<double, 2, 1, Eigen::ColMajor> 
+/*        const Eigen::Vector2d
             jacobian_exposuse_(cur_ref_exposure_[0] * intensity_cur, 1.f);*/
         const Eigen::Vector2d
-            jacobian_exposuse_(cur_ref_exposure_[0] * intensity_cur, 1.f);
+            jacobian_exposuse_(cur_ref_exposure_[0] * (*ref_patch_cache_ptr), 1.f);
+            
         //jacobian_cache_exposure_.col(col_count) = Eigen::Vector2d()
 /**
  * TODO:: Lamy, weight function use LK optical flow method or DSO huber? possible need more test to choose which one.
@@ -305,6 +319,11 @@ double SparseImgAlign::computeResiduals(
 
 int SparseImgAlign::solve()
 {
+  if(display_) {
+  //if(true) {
+    std::cout << "H_ right is = \n" << H_
+              << "\n" << std::endl;
+  }
   x_ = H_.ldlt().solve(Jres_);
   if((bool) std::isnan((double) x_[0]))
     return 0;
@@ -323,7 +342,13 @@ void SparseImgAlign::update(
     const ModelType& T_curold_from_ref,
     ModelType& T_curnew_from_ref)
 {
+  // /x_[7] = 0;
   T_curnew_from_ref = T_curold_from_ref - x_;
+  //T_curnew_from_ref[7] = 0.;
+  if (T_curnew_from_ref[7] > 255)
+    T_curnew_from_ref[7] = 255;
+  if (T_curnew_from_ref[7] < -255)
+    T_curnew_from_ref[7] = -255;
 }
 #endif
 

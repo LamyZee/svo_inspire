@@ -60,7 +60,16 @@ struct AffLight
     // Affine Parameters:
     // I_global = exp(-a)*(I_frame - b). Lamy
     // I_frame = exp(a)*I_global + b. Lamy
-    double a,b; 
+    double a,b;
+
+    // Absoluty, we dont know exposure time, if you know it use the other one.
+    static Eigen::Vector2d fromToVecExposure(
+        AffLight g2F, AffLight g2T) {
+        double a = exp(g2T.a - g2F.a);
+        double b = g2T.b - a*g2F.b;
+        return Eigen::Vector2d(a, b);
+    }
+
     static Eigen::Vector2d fromToVecExposure(
         float exposureF, float exposureT,
         AffLight g2F, AffLight g2T) {
