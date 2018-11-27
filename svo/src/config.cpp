@@ -79,7 +79,7 @@ Config::Config() :
     subpix_n_iter(30),
     max_n_kfs(0),
     img_imu_delay(0.0),
-    max_fts(180),
+    max_fts(500),
     quality_min_fts(10),
     quality_max_drop_fts(40)
 #endif

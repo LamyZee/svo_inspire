@@ -117,7 +117,14 @@ void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
   // TODO: compute initial lambda
   // Hartley and Zisserman: "A typical init value of lambda is 10^-3 times the
   // average of the diagonal elements of J'J"
-
+  mu_ = 0.f;
+  for (int i = 0; i < D; ++i) {
+    mu_ += H_(i,i);
+  }
+  mu_ = 1e-6 * mu_/D;
+  std::cout << "LevenbergMarquardt mu_ = "
+            << mu_
+            << std::endl;
   // Compute Initial Lambda
   if(mu_ < 0)
   {

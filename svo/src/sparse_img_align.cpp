@@ -24,6 +24,16 @@
 #include <vikit/vision.h>
 #include <vikit/math_utils.h>
 
+/*#define SCALE_XI_ROT 1.0f
+#define SCALE_XI_TRANS 0.5f
+#define SCALE_A 10.0f
+#define SCALE_B 1000.0f*/
+
+#define SCALE_XI_ROT 1.0f
+#define SCALE_XI_TRANS 1.0f
+#define SCALE_A 1.0f
+#define SCALE_B 0.35f
+
 namespace svo {
 
 SparseImgAlign::SparseImgAlign(
@@ -38,6 +48,11 @@ SparseImgAlign::SparseImgAlign(
   method_ = method;
   verbose_ = verbose;
   eps_ = 0.000001;
+  // from DSO
+  wM.diagonal()[0] = wM.diagonal()[1] = wM.diagonal()[2] = SCALE_XI_ROT;
+  wM.diagonal()[3] = wM.diagonal()[4] = wM.diagonal()[5] = SCALE_XI_TRANS;
+  wM.diagonal()[6] = SCALE_A;
+  wM.diagonal()[7] = SCALE_B;
 }
 
 size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
@@ -309,7 +324,8 @@ double SparseImgAlign::computeResiduals(
       }
     }
   }
-
+  H_ = wM * H_ * wM;
+  Jres_ = wM * Jres_;
   // compute the weights on the first iteration
   if(compute_weight_scale && iter_ == 0)
     scale_ = scale_estimator_->compute(errors);

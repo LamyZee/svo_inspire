@@ -75,6 +75,7 @@ protected:
   bool have_ref_patch_cache_;
   cv::Mat ref_patch_cache_;
   std::vector<bool> visible_fts_;
+  Eigen::DiagonalMatrix<double, 8> wM;
 
   void precomputeReferencePatches();
 
