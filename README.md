@@ -1,7 +1,7 @@
 # svo_inspire
 
-The newest commit cannot be successed run, because of exposure time jacobian not right,
-but it could be success compiled. 20181107
+The newest commit cannot be successed run MH_03_medium.bag, because of image gray differece.
+
 
 SVO is a good opensorce visual odometry, it's fast enough to be deploied on UAV.
 This version will add some other ideas, such as the strategy of svo_edgelet, faster depth filter, etc.
