@@ -31,8 +31,8 @@
 
 #define SCALE_XI_ROT 1.0f
 #define SCALE_XI_TRANS 1.0f
-#define SCALE_A 1.0f
-#define SCALE_B 0.35f
+#define SCALE_A 100.0f
+#define SCALE_B 1000.0f
 
 namespace svo {
 
@@ -58,7 +58,6 @@ SparseImgAlign::SparseImgAlign(
 size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
 {
   reset();
-
   if(ref_frame->fts_.empty())
   {
     SVO_WARN_STREAM("SparseImgAlign: no features to track!");
@@ -71,27 +70,16 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
   ref_patch_cache_ = cv::Mat(ref_frame_->fts_.size(), patch_area_, CV_32F);
   jacobian_cache_.resize(Eigen::NoChange, ref_patch_cache_.rows*patch_area_);
   jacobian_cache_exposure_.resize(Eigen::NoChange, ref_patch_cache_.rows*patch_area_);
-  //cur_ref_exposure_ = Eigen::Vector2d(logf(cur_frame_->ab_exposure/ref_frame_->ab_exposure), 0);
+
 /*  cur_ref_exposure_ =
     AffLight::fromToVecExposure(cur_frame_->expAB_struct_,
                                 ref_frame_->expAB_struct_);*/
-
   cur_ref_exposure_ =
     AffLight::fromToVecExposure(AffLight(0, 0),
                                 AffLight(0, 0));
-
   // TODO: should it be reset at each level?
   visible_fts_.resize(ref_patch_cache_.rows, false);
-
   SE3 T_cur_from_ref(cur_frame_->T_f_w_ * ref_frame_->T_f_w_.inverse());
-
-#if 0
-  Eigen::Vector2d res_expose_ = AffLight::fromToVecExposure(
-                                    cur_frame_->ab_exposure,
-                                    ref_frame_->ab_exposure,
-                                    cur_frame_->expAB_struct_,
-                                    ref_frame_->expAB_struct_);
-#endif
   Eigen::Matrix<double, 8, 1> optimize_poseAff;
   for(level_=max_level_; level_>=min_level_; --level_)
   {
@@ -114,16 +102,12 @@ size_t SparseImgAlign::run(FramePtr ref_frame, FramePtr cur_frame)
     T_cur_from_ref = SE3::exp(optimize_poseAff.block<6, 1>(0, 0));
     printf("exposure a = %f, b = %f\n", optimize_poseAff[6], optimize_poseAff[7]);
     cur_ref_exposure_ = Eigen::Vector2d(optimize_poseAff[6], optimize_poseAff[7]);
-    //cur_frame_->T_f_w_ = res_delta_pose * ref_frame_->T_f_w_;
-    //optimize(T_cur_from_ref);
   }
   cur_frame_->T_f_w_ = T_cur_from_ref * ref_frame_->T_f_w_;
 
   cur_frame_->expAB_struct_ =
     AffLight(ref_frame_->expAB_struct_.a - logf(cur_ref_exposure_[0]),
              ref_frame_->expAB_struct_.b - cur_ref_exposure_[1]);
-
-  //printf("res_expose_[0] = %f, res_expose_[0] = %f\n", res_expose_[0], res_expose_[1]);
   return n_meas_/patch_area_;
 }
 
@@ -196,9 +180,9 @@ void SparseImgAlign::precomputeReferencePatches()
 
         // cache the jacobian
         const int col_count = feature_counter*patch_area_ + pixel_counter; 
-        jacobian_cache_.col(col_count) =
+        jacobian_cache_.block<6, 1>(0, col_count) =
             (dx*frame_jac.row(0) + dy*frame_jac.row(1))*(focal_length / (1<<level_));
-        // jacobian_cache_exposure_.col(col_count) = 
+        jacobian_cache_.block<2, 1>(6, col_count) = Eigen::Vector2d(ref_img_ptr[0], 1.f);
       }
     }
   }
@@ -219,6 +203,7 @@ double SparseImgAlign::computeResiduals(
 {
   // Lie algebra or Rotation Vector to SE3.
   const SE3 T_cur_from_ref = SE3::exp(optimize_poseAff_.block<6, 1>(0, 0));
+  cur_ref_exposure_ = optimize_poseAff_.block<2, 1>(6, 0);
   // Warp the (cur)rent image such that it aligns with the (ref)erence image
   const cv::Mat& cur_img = cur_frame_->img_pyr_.at(level_);
 
@@ -284,17 +269,13 @@ double SparseImgAlign::computeResiduals(
         const float intensity_cur = w_cur_tl*cur_img_ptr[0] + w_cur_tr*cur_img_ptr[1] 
             + w_cur_bl*cur_img_ptr[stride] + w_cur_br*cur_img_ptr[stride+1];
         const float res = intensity_cur
-            - (*ref_patch_cache_ptr)*cur_ref_exposure_[0] - cur_ref_exposure_[1];
+            - (*ref_patch_cache_ptr + cur_ref_exposure_[1])*cur_ref_exposure_[0];
+/*        const float res = intensity_cur / cur_ref_exposure_[0]
+            - (*ref_patch_cache_ptr + cur_ref_exposure_[1]);*/
 
         // used to compute scale for robust cost
         if(compute_weight_scale)
           errors.push_back(fabsf(res));
-/*        const Eigen::Vector2d
-            jacobian_exposuse_(cur_ref_exposure_[0] * intensity_cur, 1.f);*/
-        const Eigen::Vector2d
-            jacobian_exposuse_(cur_ref_exposure_[0] * (*ref_patch_cache_ptr), 1.f);
-            
-        //jacobian_cache_exposure_.col(col_count) = Eigen::Vector2d()
 /**
  * TODO:: Lamy, weight function use LK optical flow method or DSO huber? possible need more test to choose which one.
  * Interface for weight functions. A weight function is the first derivative of a symmetric robust function p(sqrt(t)).
@@ -312,9 +293,7 @@ double SparseImgAlign::computeResiduals(
         n_meas_++;
 
         if(linearize_system) {
-          Eigen::Matrix<double, 8, 1> J;
-          J.block<6, 1>(0, 0) = jacobian_cache_.col(feature_counter*patch_area_ + pixel_counter);
-          J.block<2, 1>(6, 0) = jacobian_exposuse_;
+          Eigen::Matrix<double, 8, 1> J = jacobian_cache_.col(feature_counter*patch_area_ + pixel_counter);
           H_.noalias() += J*J.transpose()*weight;
           Jres_.noalias() -= J*res*weight;
           if(display_)
@@ -358,9 +337,15 @@ void SparseImgAlign::update(
     const ModelType& T_curold_from_ref,
     ModelType& T_curnew_from_ref)
 {
-  // /x_[7] = 0;
-  T_curnew_from_ref = T_curold_from_ref - x_;
-  //T_curnew_from_ref[7] = 0.;
+  Eigen::Matrix<double, 8, 1> delta_x_;
+  delta_x_ = wM * x_;
+  std::cout << "a = "   << delta_x_[6] 
+            << "\tb = " << delta_x_[7]
+            << std::endl;
+  double a_ = std::log(T_curold_from_ref[6])- delta_x_[6];
+  T_curnew_from_ref[6] = std::exp(a_);
+  T_curnew_from_ref[7] -= delta_x_[7];
+  T_curnew_from_ref.head<6>() = T_curold_from_ref.head<6>() - delta_x_.head<6>();
   if (T_curnew_from_ref[7] > 255)
     T_curnew_from_ref[7] = 255;
   if (T_curnew_from_ref[7] < -255)

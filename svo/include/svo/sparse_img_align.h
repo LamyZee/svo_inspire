@@ -69,7 +69,7 @@ protected:
   //AffLight cur_ref_exposure_;        // cur_exposure/ref_exposure
   Eigen::Vector2d cur_ref_exposure_;  
   // cache:
-  Matrix<double, 6, Dynamic, ColMajor> jacobian_cache_;
+  Matrix<double, 8, Dynamic, ColMajor> jacobian_cache_;
   Matrix<double, 2, Dynamic, ColMajor> jacobian_cache_exposure_;
   //Matrix<double, 6, Dynamic, ColMajor> jacobian_cache_;
   bool have_ref_patch_cache_;

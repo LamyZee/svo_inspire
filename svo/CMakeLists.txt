@@ -6,6 +6,7 @@ SET(HAVE_G2O FALSE)
 SET(USE_ROS TRUE) # Set FALSE if you want to build this package without Catkin
 SET(DEBUG_OUTPUT FALSE) # Only relevant if build without ROS
 SET(MODULE_TEST FALSE) # Generic module test exe
+SET(USE_CERES FALSE) # Use ceres to solve sparse image align, not use NOW!
 
 ################################################################################
 
@@ -51,6 +52,9 @@ FIND_PACKAGE(Eigen REQUIRED)
 FIND_PACKAGE(Sophus REQUIRED)
 #FIND_PACKAGE(fast REQUIRED)
 FIND_PACKAGE(Boost REQUIRED COMPONENTS thread system)
+IF(USE_CERES)
+  FIND_PACKAGE(Ceres REQUIRED)
+ENDIF()
 
 IF(USE_ROS)
 # FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp roslib cmake_modules) 
@@ -75,11 +79,17 @@ INCLUDE_DIRECTORIES(
   ${OpenCV_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
+#  ${CERES_INCLUDE_DIRS}
 #  ${fast_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/3rd/fast/include/
   ${PROJECT_SOURCE_DIR}/3rd/vikit/include/
   ${PROJECT_SOURCE_DIR}/online_calibration/
 )
+IF(USE_CERES)
+  INCLUDE_DIRECTORIES(
+    ${CERES_INCLUDE_DIRS}
+  )
+ENDIF()
 
 SET(Sophus_LIBRARIES libSophus.so)
 
