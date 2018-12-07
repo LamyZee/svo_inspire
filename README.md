@@ -6,6 +6,8 @@ The newest commit cannot be successed run MH_03_medium.bag, because of image gra
 SVO is a good opensorce visual odometry, it's fast enough to be deploied on UAV.
 This version will add some other ideas, such as the strategy of svo_edgelet, faster depth filter, etc.
 
+Origin svo: https://github.com/uzh-rpg/rpg_svo.git
+
 Build
 
 mkdir catkin_svo
