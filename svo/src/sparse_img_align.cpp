@@ -31,7 +31,7 @@
 
 #define SCALE_XI_ROT 1.0f
 #define SCALE_XI_TRANS 1.0f
-#define SCALE_A 100.0f
+#define SCALE_A 10.0f
 #define SCALE_B 1000.0f
 
 namespace svo {
@@ -344,12 +344,11 @@ void SparseImgAlign::update(
             << std::endl;
   double a_ = std::log(T_curold_from_ref[6])- delta_x_[6];
   T_curnew_from_ref[6] = std::exp(a_);
+  //T_curnew_from_ref[6] -= delta_x_[6];
   T_curnew_from_ref[7] -= delta_x_[7];
   T_curnew_from_ref.head<6>() = T_curold_from_ref.head<6>() - delta_x_.head<6>();
-  if (T_curnew_from_ref[7] > 255)
-    T_curnew_from_ref[7] = 255;
-  if (T_curnew_from_ref[7] < -255)
-    T_curnew_from_ref[7] = -255;
+  if (T_curnew_from_ref[7] > 255) T_curnew_from_ref[7] = 255;
+  if (T_curnew_from_ref[7] < -255) T_curnew_from_ref[7] = -255;
 }
 #endif
 
