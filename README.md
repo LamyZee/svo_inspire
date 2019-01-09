@@ -1,6 +1,6 @@
 # svo_inspire
 
-The newest commit cannot be successed run MH_03_medium.bag, because of image gray differece.
+The newest commit cannot be successed run MH_03_medium.bag, sparse image align still have some problems.
 
 
 SVO is a good opensorce visual odometry, it's fast enough to be deploied on UAV.
