@@ -20,12 +20,15 @@
 #include <vikit/nlls_solver.h>
 #include <vikit/performance_monitor.h>
 #include <svo/global.h>
+#include <robust_cost_function/robust_cost.h>
 
 namespace vk {
 class AbstractCamera;
 }
 
 namespace svo {
+
+using namespace robust_cost;
 
 class Feature;
 
@@ -76,6 +79,9 @@ protected:
   cv::Mat ref_patch_cache_;
   std::vector<bool> visible_fts_;
   Eigen::DiagonalMatrix<double, 8> wM;
+  DynamicCovScalingPtr dcs_ptr_;
+  double phi_;
+  std::ofstream fous;
 
   void precomputeReferencePatches();
 
@@ -84,17 +90,10 @@ protected:
                 ? 1 : setting_huberTH_ / std::fabs(residual);
   }
 
-#ifdef ORIGIN
-virtual double computeResiduals(
-    const SE3& T_cur_from_ref,
-    bool linearize_system,
-    bool compute_weight_scale);
-#else
 virtual double computeResiduals(
     const Eigen::Matrix<double, 8, 1>& T_cur_from_ref,
     bool linearize_system,
     bool compute_weight_scale);
-#endif
 
 //  virtual double computeResiduals(const SE3& model, bool linearize_system,
 //      bool compute_weight_scale = false);

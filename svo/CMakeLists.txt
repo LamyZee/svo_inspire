@@ -83,6 +83,7 @@ INCLUDE_DIRECTORIES(
 #  ${fast_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/3rd/fast/include/
   ${PROJECT_SOURCE_DIR}/3rd/vikit/include/
+  ${PROJECT_SOURCE_DIR}/3rd/robust_cost_function/include/
   ${PROJECT_SOURCE_DIR}/online_calibration/
 )
 IF(USE_CERES)
@@ -129,6 +130,7 @@ LIST(APPEND SOURCEFILES
   3rd/vikit/src/performance_monitor.cpp
   3rd/vikit/src/robust_cost.cpp
   3rd/vikit/src/vision.cpp
+  3rd/robust_cost_function/src/robust_cost.cpp
   src/frame_handler_mono.cpp
   src/frame_handler_base.cpp
   src/frame.cpp

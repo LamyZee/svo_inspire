@@ -18,6 +18,7 @@
 #define SVO_POSE_OPTIMIZER_H_
 
 #include <svo/global.h>
+#include <robust_cost_function/robust_cost.h>
 
 namespace svo {
 
@@ -33,6 +34,9 @@ class Point;
 
 /// Motion-only bundle adjustment. Minimize the reprojection error of a single frame.
 namespace pose_optimizer {
+
+static robust_cost::DynamicCovScalingPtr pose_dcs_ptr_
+  = std::make_shared<robust_cost::DynamicCovScaling>();
 
 void optimizeGaussNewton(
     const double reproj_thresh,

@@ -85,6 +85,8 @@ protected:
   virtual void
   finishTrial           () { }
 
+  double calcLambda(const Matrix<double, D, D>& input);
+
 public:
 
   /// Damping parameter. If mu > 0, coefficient matrix is positive definite, this

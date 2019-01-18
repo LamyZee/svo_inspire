@@ -100,6 +100,12 @@ void vk::NLLSSolver<D, T>::optimizeGaussNewton(ModelType& model)
 }
 
 template <int D, typename T>
+double vk::NLLSSolver<D, T>::calcLambda(const Matrix<double, D, D>& input) {
+  double sum = input.diagonal().sum();
+  return static_cast<double>(sum / D * 1e-6);
+}
+
+template <int D, typename T>
 void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
 {
   // Compute weight scale
@@ -113,38 +119,38 @@ void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
     cout << "init chi2 = " << chi2_
          << "\t n_meas = " << n_meas_
          << endl;
+  std::cout << "H_ init = \n" << H_ << std::endl;
+
 
   // TODO: compute initial lambda
   // Hartley and Zisserman: "A typical init value of lambda is 10^-3 times the
-  // average of the diagonal elements of J'J"
-  mu_ = 0.f;
-  for (int i = 0; i < D; ++i) {
-    mu_ += H_(i,i);
-  }
-  mu_ = 1e-6 * mu_/D;
+  // average of the diagonal elements of J'J", Page600
+  //mu_ = 0.f;
+  //for (int i = 0; i < D; ++i) {
+  //  mu_ += H_(i,i);
+  //}
+  //mu_ = 1e-6 * mu_/D;
+  mu_ = calcLambda(H_);
   std::cout << "LevenbergMarquardt mu_ = "
             << mu_
             << std::endl;
   // Compute Initial Lambda
-  if(mu_ < 0)
-  {
-    double H_max_diag = 0;
-    double tau = 1e-4;
-    for(size_t j=0; j<D; ++j)
-      H_max_diag = max(H_max_diag, fabs(H_(j,j)));
-    mu_ = tau*H_max_diag;
-  }
+  // if (mu_ < 0) {
+  //   double H_max_diag = 0;
+  //   double tau = 1e-4;
+  //   for(size_t j=0; j<D; ++j)
+  //     H_max_diag = max(H_max_diag, fabs(H_(j,j)));
+  //   mu_ = tau*H_max_diag;
+  // }
 
   // perform iterative estimation
-  for (iter_ = 0; iter_<n_iter_; ++iter_)
-  {
+  for (iter_ = 0; iter_<n_iter_; ++iter_) {
     rho_ = 0;
     startIteration();
 
     // try to compute and update, if it fails, try with increased mu
     n_trials_ = 0;
-    do
-    {
+    do {
       // init variables
       ModelType new_model;
       double new_chi2 = -1;
@@ -157,25 +163,22 @@ void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
       computeResiduals(model, true, false);
 
       // add damping term:
-      H_ += (H_.diagonal()*mu_).asDiagonal();
+      H_ += (H_.diagonal() * mu_).asDiagonal();
 
       // add prior
       if(have_prior_)
         applyPrior(model);
 
       // solve the linear system
-      if(solve())
-      {
+      if(solve()) {
         // update the model
         update(model, new_model);
 
         // compute error with new model and compare to old error
         n_meas_ = 0;
         new_chi2 = computeResiduals(new_model, false, false);
-        rho_ = chi2_-new_chi2;
-      }
-      else
-      {
+        rho_ = chi2_ - new_chi2;
+      } else {
         // matrix was singular and could not be computed
         cout << "Matrix is close to singular!" << endl;
         cout << "H = " << H_ << endl;
@@ -183,16 +186,15 @@ void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
         rho_ = -1;
       }
 
-      if(rho_>0)
-      {
+      if ( rho_ > 0 ) {
         // update decrased the error -> success
         model = new_model;
         chi2_ = new_chi2;
         stop_ = vk::norm_max(x_)<=eps_;
-        mu_ *= max(1./3., min(1.-pow(2*rho_-1,3), 2./3.));
+        //mu_ *= max(1./3., min(1.-pow(2*rho_-1,3), 2./3.));
+        mu_ *= 0.1f;
         nu_ = 2.;
-        if(verbose_)
-        {
+        if (verbose_) {
           cout << "It. " << iter_
                << "\t Trial " << n_trials_
                << "\t Success"
@@ -202,18 +204,15 @@ void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
                << "\t nu = " << nu_
                << endl;
         }
-      }
-      else
-      {
+      } else {
         // update increased the error -> fail
-        mu_ *= nu_;
+        //mu_ *= nu_;
+        mu_ *= 10.f;
         nu_ *= 2.;
         ++n_trials_;
         if (n_trials_ >= n_trials_max_)
           stop_ = true;
-
-        if(verbose_)
-        {
+        if(verbose_) {
           cout << "It. " << iter_
                << "\t Trial " << n_trials_
                << "\t Failure"
@@ -227,14 +226,21 @@ void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardt(ModelType& model)
 
       finishTrial();
 
-    } while(!(rho_>0 || stop_));
+    } while( !(rho_ > 0 || stop_));
     if (stop_)
       break;
-
     finishIteration();
   }
 }
 
+// Numerical-Recipes-C
+//template <int D, typename T>
+//void vk::NLLSSolver<D, T>::optimizeLevenbergMarquardtB(ModelType& model) {
+//
+//  chi2_ = computeResiduals(model, true, false);
+//  mu_ = calcLambda(H_);
+//
+//}
 
 template <int D, typename T>
 void vk::NLLSSolver<D, T>::setRobustCostFunction(

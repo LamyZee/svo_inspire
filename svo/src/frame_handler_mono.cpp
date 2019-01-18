@@ -139,7 +139,7 @@ FrameHandlerBase::UpdateResult FrameHandlerMono::processFrame()
   // sparse image align
   SVO_START_TIMER("sparse_img_align");
   SparseImgAlign img_align(Config::kltMaxLevel(), Config::kltMinLevel(),
-                           30, SparseImgAlign::GaussNewton, false, true);
+                           30, SparseImgAlign::LevenbergMarquardt, false, true);
   size_t img_align_n_tracked = img_align.run(last_frame_, new_frame_);
   SVO_STOP_TIMER("sparse_img_align");
   SVO_LOG(img_align_n_tracked);
