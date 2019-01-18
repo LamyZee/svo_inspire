@@ -35,8 +35,6 @@ void optimizeGaussNewton(
     double& error_final,
     size_t& num_obs)
 {
-  // robust cost function
-
   // init
   double chi2(0.0);
   vector<double> chi2_vec_init, chi2_vec_final;
@@ -89,7 +87,7 @@ void optimizeGaussNewton(
       if(iter == 0)
         chi2_vec_init.push_back(e.squaredNorm()); // just for debug
       J *= sqrt_inv_cov;
-      //TODO:: Try Huber loss function?
+      // This use DCS robust cost function, looks more robuster.
       //double weight = weight_function.value(e.norm()/scale);
       double weight = pose_dcs_ptr_->CalcWeight(e.squaredNorm()/scale/scale);
       A.noalias() += J.transpose()*J*weight;

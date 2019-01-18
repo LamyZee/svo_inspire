@@ -35,7 +35,7 @@
 #define SCALE_A 10.0f
 #define SCALE_B 1000.0f
 
-#define DEBUG_JACOBIAN_NAN
+//#define DEBUG_JACOBIAN_NAN
 
 namespace svo {
 
@@ -297,7 +297,7 @@ double SparseImgAlign::computeResiduals(
 
         const float res = intensity_cur
                         - *ref_patch_cache_ptr / std::exp(cur_ref_exposure_[0])
-                        - cur_ref_exposure_[1];
+                        + cur_ref_exposure_[1];
 
         // used to compute scale for robust cost
         if (compute_weight_scale)
@@ -351,8 +351,6 @@ void SparseImgAlign::update(
   delta_x_ = wM * x_;
   std::cout << "a = " << delta_x_[6] << "\t"
             << "b = " << delta_x_[7] << std::endl;
-  //double a_ = std::log(T_curold_from_ref[6]) - delta_x_[6];
-  //T_curnew_from_ref[6] = std::exp(a_);
   T_curnew_from_ref[6] -= delta_x_[6];
   T_curnew_from_ref[7] -= delta_x_[7];
   T_curnew_from_ref.head<6>() = T_curold_from_ref.head<6>()
